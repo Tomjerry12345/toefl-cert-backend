@@ -1,40 +1,30 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
-    username: {
+    walletAddress: {
       type: String,
       required: true,
       unique: true,
+      lowercase: true,
       trim: true,
     },
-    password: {
+    nonce: {
       type: String,
-      required: true,
+      default: () => crypto.randomBytes(16).toString("hex"),
     },
     role: {
       type: String,
       default: "admin",
     },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
   },
   { timestamps: true },
 );
 
-// Hash password sebelum disimpan
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
-});
-
-// Method untuk cek password
-userSchema.methods.comparePassword = async function (password) {
-  return bcrypt.compare(password, this.password);
+userSchema.methods.refreshNonce = async function () {
+  this.nonce = crypto.randomBytes(16).toString("hex");
+  await this.save();
 };
 
 module.exports = mongoose.model("User", userSchema);

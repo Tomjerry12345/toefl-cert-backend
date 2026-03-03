@@ -1,45 +1,60 @@
 const jwt = require("jsonwebtoken");
+const { ethers } = require("ethers");
 const User = require("../models/User");
 
-/**
- * POST /api/auth/login
- */
-const login = async (req, res) => {
+const getNonce = async (req, res) => {
   try {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Username dan password wajib diisi",
-      });
-    }
-
-    // Cari user di MongoDB
-    const user = await User.findOne({ username, isActive: true });
+    const walletAddress = req.params.walletAddress.toLowerCase();
+    let user = await User.findOne({ walletAddress });
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Username atau password salah",
-      });
+      user = await User.create({ walletAddress });
     }
+    const message =
+      "Selamat datang di TOEFL Cert System!\n\nTandatangani pesan ini untuk login.\n\nWallet: " +
+      walletAddress +
+      "\nNonce: " +
+      user.nonce;
+    res.json({ success: true, data: { nonce: user.nonce, message } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
-    // Cek password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Username atau password salah",
-      });
+const verifySignature = async (req, res) => {
+  try {
+    const { walletAddress, signature } = req.body;
+    if (!walletAddress || !signature) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "walletAddress dan signature wajib diisi",
+        });
     }
-
-    // Generate JWT token
+    const address = walletAddress.toLowerCase();
+    const user = await User.findOne({ walletAddress: address });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User tidak ditemukan" });
+    }
+    const message =
+      "Selamat datang di TOEFL Cert System!\n\nTandatangani pesan ini untuk login.\n\nWallet: " +
+      address +
+      "\nNonce: " +
+      user.nonce;
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+    if (recoveredAddress.toLowerCase() !== address) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Signature tidak valid" });
+    }
+    await user.refreshNonce();
     const token = jwt.sign(
-      { id: user._id, username: user.username, role: user.role },
+      { id: user._id, walletAddress: user.walletAddress, role: user.role },
       process.env.JWT_SECRET || "toefl_secret_key",
       { expiresIn: "24h" },
     );
-
     res.json({
       success: true,
       message: "Login berhasil",
@@ -47,30 +62,23 @@ const login = async (req, res) => {
         token,
         user: {
           id: user._id,
-          username: user.username,
+          walletAddress: user.walletAddress,
           role: user.role,
         },
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-/**
- * GET /api/auth/me
- */
 const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user.id);
     res.json({ success: true, data: user });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-module.exports = { login, getMe };
+module.exports = { getNonce, verifySignature, getMe };
