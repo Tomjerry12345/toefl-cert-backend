@@ -1,14 +1,20 @@
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const router = express.Router();
-const {
-  getNonce,
-  verifySignature,
-  getMe,
-} = require("../controllers/authController");
+const { login, getMe } = require("../controllers/authController");
 const authMiddleware = require("../middleware/auth");
 
-router.get("/nonce/:walletAddress", getNonce);
-router.post("/verify-signature", verifySignature);
+// Batasi percobaan login: 10x per 15 menit per IP (anti brute-force)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    success: false,
+    message: "Terlalu banyak percobaan login, coba lagi dalam 15 menit",
+  },
+});
+
+router.post("/login", loginLimiter, login);
 router.get("/me", authMiddleware, getMe);
 
 module.exports = router;

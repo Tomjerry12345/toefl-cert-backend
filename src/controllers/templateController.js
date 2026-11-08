@@ -61,7 +61,7 @@ const createTemplate = async (req, res) => {
       htmlTemplate,
       backgroundImageUrl,
       fields: fields ? JSON.parse(fields) : undefined,
-      createdBy: req.user?.walletAddress || "system",
+      createdBy: req.user?.username || "system",
     });
 
     res.status(201).json({
@@ -285,17 +285,17 @@ const getDefaultHtml = async (req, res) => {
 
     <div class="score-box">
       <div class="score-label">TOTAL SCORE</div>
-      <div class="score-value">{{score}}</div>
+      <div class="score-value">{{totalSkor}}</div>
     </div>
 
     <div class="info-row">
       <div class="info-item">
-        <div class="info-label">Test Date</div>
-        <div>{{testDate}}</div>
+        <div class="info-label">Start Date</div>
+        <div>{{waktuMulai}}</div>
       </div>
       <div class="info-item">
-        <div class="info-label">Valid Until</div>
-        <div>{{expiryDate}}</div>
+        <div class="info-label">End Date</div>
+        <div>{{waktuSelesai}}</div>
       </div>
     </div>
   </div>

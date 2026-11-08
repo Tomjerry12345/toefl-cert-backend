@@ -24,7 +24,7 @@ const templateSchema = new mongoose.Schema(
     // Field yang digunakan dalam template ini
     fields: {
       type: [String],
-      default: ["holderName", "nim", "score", "testDate", "expiryDate", "institution"],
+      default: ["holderName", "nim", "totalSkor", "waktuMulai", "waktuSelesai", "institution"],
     },
     isActive: {
       type: Boolean,

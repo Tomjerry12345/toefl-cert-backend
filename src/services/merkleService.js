@@ -2,73 +2,74 @@ const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 const { ethers } = require("ethers");
 
-/**
- * Generate leaf hash dari data sertifikat
- * Hash dibuat dari kombinasi data penting sertifikat
- */
-const generateLeafHash = (certData) => {
-  const { certId, holderName, nim, score, testDate } = certData;
+// Semua field penting sertifikat ikut di-hash. Mengubah salah satunya di
+// database akan membuat hash berbeda dan verifikasi gagal.
+const canonText = (v) => (v === null || v === undefined ? "" : String(v).trim());
 
-  // Encode data ke bytes lalu hash dengan keccak256
-  const encoded = ethers.solidityPackedKeccak256(
-    ["string", "string", "string", "uint256", "uint256"],
-    [
-      certId,
-      holderName,
-      nim,
-      score,
-      Math.floor(new Date(testDate).getTime() / 1000),
-    ]
-  );
+const canonNumber = (v) => {
+  if (v === null || v === undefined || v === "") return "";
+  const n = Number(v);
+  return Number.isFinite(n) ? String(n) : "";
+};
 
-  return encoded;
+const canonDate = (v) => {
+  if (!v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? "" : d.toISOString();
 };
 
 /**
- * Buat Merkle Tree dari array data sertifikat
- * @param {Array} certsData - Array objek data sertifikat
- * @returns {Object} { tree, root, leaves }
+ * Bentuk baku (canonical) data sertifikat. Urutan key tetap supaya hasil
+ * JSON.stringify selalu sama, baik saat penerbitan maupun verifikasi.
  */
+const canonicalizeCert = (cert) => ({
+  certId: canonText(cert.certId),
+  holderName: canonText(cert.holderName),
+  nim: canonText(cert.nim),
+  nomorSurat: canonText(cert.nomorSurat),
+  lokasi: canonText(cert.lokasi),
+  waktuMulai: canonDate(cert.waktuMulai),
+  waktuSelesai: canonDate(cert.waktuSelesai),
+  skorListening: canonNumber(cert.skorListening),
+  skorStructure: canonNumber(cert.skorStructure),
+  skorReading: canonNumber(cert.skorReading),
+  totalSkor: canonNumber(cert.totalSkor),
+  institution: canonText(cert.institution),
+});
+
+/**
+ * Leaf hash dari data sertifikat (objek form ATAU dokumen MongoDB)
+ */
+const generateLeafHash = (cert) => {
+  const json = JSON.stringify(canonicalizeCert(cert));
+  return ethers.keccak256(ethers.toUtf8Bytes(json));
+};
+
 const buildMerkleTree = (certsData) => {
   if (!certsData || certsData.length === 0) {
     throw new Error("Data sertifikat tidak boleh kosong");
   }
 
-  // Generate leaf untuk setiap sertifikat
   const leaves = certsData.map((cert) => {
     const leaf = generateLeafHash(cert);
-    return Buffer.from(leaf.slice(2), "hex"); // remove 0x prefix
+    return Buffer.from(leaf.slice(2), "hex");
   });
 
-  // Buat tree dengan opsi sortPairs untuk konsistensi
   const tree = new MerkleTree(leaves, keccak256, {
     sortPairs: true,
     hashLeaves: false, // leaves sudah di-hash
   });
 
-  const root = tree.getHexRoot();
-
-  return { tree, root, leaves };
+  return { tree, root: tree.getHexRoot(), leaves };
 };
 
-/**
- * Ambil Merkle proof untuk satu sertifikat dalam batch
- * @param {Object} tree - Merkle Tree object
- * @param {String} leafHash - Hash leaf sertifikat
- * @returns {Array} Array proof dalam hex string
- */
 const getMerkleProof = (tree, leafHash) => {
   const leaf = Buffer.from(leafHash.slice(2), "hex");
-  const proof = tree.getHexProof(leaf);
-  return proof;
+  return tree.getHexProof(leaf);
 };
 
 /**
  * Verifikasi Merkle proof secara lokal (tanpa blockchain)
- * @param {String} merkleRoot - Root dari tree
- * @param {String} leafHash - Hash leaf yang diverifikasi
- * @param {Array} proof - Array proof
- * @returns {Boolean} true jika valid
  */
 const verifyMerkleProof = (merkleRoot, leafHash, proof) => {
   const leaf = Buffer.from(leafHash.slice(2), "hex");
@@ -81,21 +82,17 @@ const verifyMerkleProof = (merkleRoot, leafHash, proof) => {
 };
 
 /**
- * Process batch sertifikat - generate tree dan proof untuk semua
- * @param {Array} certsData - Array data sertifikat
- * @returns {Object} { merkleRoot, certsWithProof }
+ * Proses batch sertifikat - buat tree dan proof untuk semuanya
  */
 const processBatch = (certsData) => {
   const { tree, root } = buildMerkleTree(certsData);
 
   const certsWithProof = certsData.map((cert) => {
     const leafHash = generateLeafHash(cert);
-    const proof = getMerkleProof(tree, leafHash);
-
     return {
       ...cert,
       leafHash,
-      merkleProof: proof,
+      merkleProof: getMerkleProof(tree, leafHash),
       merkleRoot: root,
     };
   });

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
+const authMiddleware = require("../middleware/auth");
 const {
   getAllTemplates,
   getTemplateById,
@@ -25,6 +26,9 @@ const upload = multer({
     }
   },
 });
+
+// Semua route template wajib login admin
+router.use(authMiddleware);
 
 router.get("/default-html", getDefaultHtml);
 router.get("/", getAllTemplates);

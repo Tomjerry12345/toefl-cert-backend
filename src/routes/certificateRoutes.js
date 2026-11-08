@@ -1,78 +1,41 @@
 const express = require("express");
 const router = express.Router();
+const authMiddleware = require("../middleware/auth");
 const upload = require("../middleware/upload");
 const { validateIssueCert, validateBatch } = require("../middleware/validate");
 const {
   issueCertificate,
   issueBatch,
-  verifyCertificate,
   revokeCertificate,
   getAllCertificates,
   getCertificateById,
 } = require("../controllers/certificateController");
+const Certificate = require("../models/Certificate");
 
 /**
- * @route   POST /api/certificates/issue
- * @desc    Terbitkan satu sertifikat
+ * PUBLIK: unduh PDF sertifikat (redirect ke Cloudinary)
  */
-router.post(
-  "/issue",
-  (req, res, next) => {
-    console.log("🔥 MASUK ROUTE /issue");
-    console.log("HEADERS:", req.headers); // 
-    next();
-  },
-  upload.single("file"),
-  validateIssueCert,
-  issueCertificate
-);
-
-/**
- * @route   POST /api/certificates/issue-batch
- * @desc    Terbitkan banyak sertifikat sekaligus
- */
-router.post("/issue-batch", validateBatch, issueBatch);
-
-/**
- * @route   GET /api/certificates
- * @desc    Ambil semua sertifikat (dengan paginasi & filter)
- */
-router.get("/", getAllCertificates);
-
-/**
- * @route   GET /api/certificates/:certId
- * @desc    Ambil detail sertifikat by ID
- */
-router.get("/:certId", getCertificateById);
-
-
-router.get('/:certId/pdf', async (req, res) => {
+router.get("/:certId/pdf", async (req, res) => {
   try {
-    const Certificate = require('../models/Certificate');
-
     const cert = await Certificate.findOne({ certId: req.params.certId });
-
-    if (!cert) {
-      return res.status(404).json({ message: "Certificate not found" });
-    }
-
-    if (!cert.filePath) {
-      return res.status(404).json({ message: "PDF belum tersedia" });
-    }
-
-    // 🔥 INI KUNCI NYA
+    if (!cert) return res.status(404).json({ success: false, message: "Sertifikat tidak ditemukan" });
+    if (!cert.filePath) return res.status(404).json({ success: false, message: "PDF belum tersedia" });
     return res.redirect(cert.filePath);
-
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Gagal ambil PDF" });
+    res.status(500).json({ success: false, message: "Gagal mengambil PDF" });
   }
 });
 
-/**
- * @route   DELETE /api/certificates/:certId/revoke
- * @desc    Cabut sertifikat
- */
+// ============================================================
+// SEMUA ROUTE DI BAWAH INI WAJIB LOGIN ADMIN
+// ============================================================
+router.use(authMiddleware);
+
+router.post("/issue", upload.single("file"), validateIssueCert, issueCertificate);
+router.post("/issue-batch", validateBatch, issueBatch);
+router.get("/", getAllCertificates);
+router.get("/:certId", getCertificateById);
 router.delete("/:certId/revoke", revokeCertificate);
 
 module.exports = router;

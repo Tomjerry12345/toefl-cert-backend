@@ -1,18 +1,19 @@
 const mongoose = require("mongoose");
-const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
-    walletAddress: {
+    username: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
       trim: true,
     },
-    nonce: {
+    password: {
       type: String,
-      default: () => crypto.randomBytes(16).toString("hex"),
+      required: true,
+      select: false, // tidak ikut ter-query secara default
     },
     role: {
       type: String,
@@ -22,9 +23,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-userSchema.methods.refreshNonce = async function () {
-  this.nonce = crypto.randomBytes(16).toString("hex");
-  await this.save();
+// Hash password otomatis setiap kali password diubah
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
+  this.password = await bcrypt.hash(this.password, 10);
+});
+
+userSchema.methods.comparePassword = function (plainPassword) {
+  return bcrypt.compare(plainPassword, this.password);
 };
 
 module.exports = mongoose.model("User", userSchema);
