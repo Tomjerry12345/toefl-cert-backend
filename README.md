@@ -1,5 +1,4 @@
 # 🎓 TOEFL Certificate Verification Backend
-
 **Implementasi Algoritma Merkle Tree pada Sistem Verifikasi Sertifikat TOEFL Berbasis Blockchain Ethereum dan QR Code**
 
 ---
@@ -41,26 +40,21 @@ toefl-cert-backend/
 ## ⚙️ Setup & Instalasi
 
 ### 1. Install dependencies
-
 ```bash
 npm install
 ```
 
 ### 2. Konfigurasi .env
-
 ```bash
 cp .env.example .env
 ```
-
 Isi file `.env`:
-
 - `MONGODB_URI` - URI MongoDB kamu
 - `SEPOLIA_RPC_URL` - Dari [Infura](https://infura.io) atau [Alchemy](https://alchemy.com)
 - `PRIVATE_KEY` - Private key wallet Ethereum (jangan share!)
 - `CONTRACT_ADDRESS` - Diisi setelah deploy
 
 ### 3. Compile & Deploy Smart Contract
-
 ```bash
 # Compile
 npm run compile
@@ -68,19 +62,15 @@ npm run compile
 # Deploy ke Sepolia (pastikan wallet ada ETH Sepolia)
 npm run deploy
 ```
-
 Salin `CONTRACT_ADDRESS` dari output ke file `.env`.
 
 ### 4. Copy ABI hasil compile
-
 Setelah `npm run compile`, copy file ABI:
-
 ```bash
 cp artifacts/contracts/TOEFLCertificate.sol/TOEFLCertificate.json contracts/abi/
 ```
 
 ### 5. Jalankan server
-
 ```bash
 # Development
 npm run dev
@@ -93,22 +83,21 @@ npm start
 
 ## 📡 API Endpoints
 
-| Method   | Endpoint                           | Deskripsi                           |
-| -------- | ---------------------------------- | ----------------------------------- |
-| `POST`   | `/api/certificates/issue`          | Terbitkan 1 sertifikat              |
-| `POST`   | `/api/certificates/issue-batch`    | Terbitkan batch sertifikat          |
-| `GET`    | `/api/certificates`                | List semua sertifikat               |
-| `GET`    | `/api/certificates/:certId`        | Detail sertifikat                   |
-| `DELETE` | `/api/certificates/:certId/revoke` | Cabut sertifikat                    |
-| `GET`    | `/api/verify/:certId`              | **Verifikasi** (endpoint publik QR) |
-| `GET`    | `/api/health`                      | Health check                        |
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| `POST` | `/api/certificates/issue` | Terbitkan 1 sertifikat |
+| `POST` | `/api/certificates/issue-batch` | Terbitkan batch sertifikat |
+| `GET` | `/api/certificates` | List semua sertifikat |
+| `GET` | `/api/certificates/:certId` | Detail sertifikat |
+| `DELETE` | `/api/certificates/:certId/revoke` | Cabut sertifikat |
+| `GET` | `/api/verify/:certId` | **Verifikasi** (endpoint publik QR) |
+| `GET` | `/api/health` | Health check |
 
 ---
 
 ## 🌿 Contoh Request
 
 ### Issue Single Certificate
-
 ```json
 POST /api/certificates/issue
 Content-Type: multipart/form-data
@@ -125,7 +114,6 @@ Content-Type: multipart/form-data
 ```
 
 ### Issue Batch
-
 ```json
 POST /api/certificates/issue-batch
 Content-Type: application/json
@@ -181,3 +169,10 @@ docker compose up --build
 ```
 
 Server jalan di http://localhost:5000. Image juga di-build dan dipublish ke ghcr.io lewat GitHub Actions setiap push ke `main`. Cara deploy ke Vercel dan detail lainnya ada di [DEPLOY.md](DEPLOY.md).
+
+## Test
+
+```bash
+npm test               # Merkle tree, util, validasi, auth, health check (tanpa database)
+npm run test:contract  # test smart contract (hardhat)
+```

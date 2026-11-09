@@ -9,7 +9,8 @@
     "dev": "set NODE_OPTIONS=--openssl-legacy-provider && nodemon src/index.js",
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy.js --network sepolia",
-    "test": "npx hardhat test"
+    "test": "node --test",
+    "test:contract": "npx hardhat test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

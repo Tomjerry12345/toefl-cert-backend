@@ -19,7 +19,7 @@ Image-nya pakai Chromium dari Debian (`PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromi
 
 ## CI
 
-`.github/workflows/docker-publish.yml` jalan di setiap push dan PR ke `main`. Isinya build image, cek cepat bahwa app ter-load dan Chromium ada, lalu (hanya untuk push) kirim image ke ghcr.io dengan tag `latest` dan `sha-<commit>`. Pakai `GITHUB_TOKEN` bawaan, tidak perlu secret.
+`.github/workflows/docker-publish.yml` jalan di setiap push dan PR ke `main`. Pertama `npm test`, lalu build image, cek cepat bahwa app ter-load dan Chromium ada, lalu (hanya untuk push) kirim image ke ghcr.io dengan tag `latest` dan `sha-<commit>`. Pakai `GITHUB_TOKEN` bawaan, tidak perlu secret.
 
 Image dari ghcr bisa dijalankan di mana saja:
 
