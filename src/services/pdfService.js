@@ -96,11 +96,38 @@ const uploadImageToCloudinary = (buffer, name) => {
   });
 };
 
-const launchBrowser = () =>
-  require("puppeteer").launch({
-    headless: "new",
+// Pilih Chromium sesuai lingkungan:
+//  - Vercel  : @sparticuz/chromium (Chromium ringan untuk serverless)
+//  - Docker  : Chromium sistem lewat PUPPETEER_EXECUTABLE_PATH (diset di Dockerfile)
+//  - Lokal   : Chrome hasil download paket `puppeteer` (devDependency) atau PUPPETEER_EXECUTABLE_PATH
+const launchBrowser = async () => {
+  const puppeteer = require("puppeteer-core");
+
+  if (process.env.VERCEL) {
+    const chromium = require("@sparticuz/chromium");
+    return puppeteer.launch({
+      args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+      executablePath: await chromium.executablePath(),
+      headless: "shell",
+    });
+  }
+
+  let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (!executablePath) {
+    try {
+      executablePath = require("puppeteer").executablePath();
+    } catch {
+      throw new Error(
+        "Chrome tidak ditemukan. Jalankan `npm install` (paket puppeteer) atau set PUPPETEER_EXECUTABLE_PATH.",
+      );
+    }
+  }
+  return puppeteer.launch({
+    executablePath,
+    headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
   });
+};
 
 // Render 1 sertifikat jadi PDF memakai browser yang sudah terbuka
 const renderPdf = async (browser, htmlTemplate, certData) => {

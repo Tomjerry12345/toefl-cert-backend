@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
+const os = require("os");
 const authMiddleware = require("../middleware/auth");
 const {
   getAllTemplates,
@@ -12,9 +13,9 @@ const {
   getDefaultHtml,
 } = require("../controllers/templateController");
 
-// Multer untuk upload background image (temp ke disk)
+// Multer untuk upload background image (temp ke disk, di os.tmpdir() karena filesystem Vercel read-only)
 const upload = multer({
-  dest: "uploads/temp/",
+  dest: path.join(os.tmpdir(), "toefl-uploads"),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
     const allowed = [".png", ".jpg", ".jpeg", ".webp"];

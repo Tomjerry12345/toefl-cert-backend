@@ -1,0 +1,12 @@
+services:
+  api:
+    build: .
+    image: toefl-cert-backend:local
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+    restart: unless-stopped

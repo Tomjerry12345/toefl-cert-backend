@@ -1,5 +1,4 @@
 require("dotenv").config();
-const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -49,14 +48,6 @@ const limiter = rateLimit({
 });
 app.use("/api/", limiter);
 
-// ============================================================
-// ROUTES
-// ============================================================
-app.use("/api/certificates", certificateRoutes);
-app.use("/api/verify", verifyRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/templates", templateRoutes);
-
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({
@@ -66,6 +57,26 @@ app.get("/api/health", (req, res) => {
     environment: process.env.NODE_ENV,
   });
 });
+
+// Pastikan DB & blockchain siap sebelum route lain menerima request.
+// Di Vercel (serverless) ini jalan lazily saat cold start; di Docker/lokal sudah siap sebelum listen.
+app.use(async (req, res, next) => {
+  try {
+    await ensureReady();
+    next();
+  } catch (err) {
+    console.error("❌ Init gagal:", err.message);
+    res.status(503).json({ success: false, message: "Layanan belum siap, coba lagi sebentar" });
+  }
+});
+
+// ============================================================
+// ROUTES
+// ============================================================
+app.use("/api/certificates", certificateRoutes);
+app.use("/api/verify", verifyRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/templates", templateRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -82,16 +93,29 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================================
-// START SERVER
+// INIT & START SERVER
 // ============================================================
+// Init sekali per proses (di serverless: sekali per instance). Promise di-cache agar
+// request bersamaan tidak membuat koneksi ganda; kalau gagal, boleh dicoba lagi.
+let readyPromise = null;
+const ensureReady = () => {
+  if (!readyPromise) {
+    readyPromise = (async () => {
+      getJwtSecret(); // gagal cepat kalau JWT_SECRET belum diset
+      await connectDB();
+      await initBlockchain(); // tunggu sampai kontrak siap sebelum menerima request
+      require("./config/cloudinary");
+    })().catch((err) => {
+      readyPromise = null;
+      throw err;
+    });
+  }
+  return readyPromise;
+};
+
 const startServer = async () => {
   try {
-    getJwtSecret(); // gagal cepat kalau JWT_SECRET belum diset
-    fs.mkdirSync("uploads/temp", { recursive: true }); // dipakai upload background template
-
-    await connectDB();
-    await initBlockchain(); // tunggu sampai kontrak siap sebelum menerima request
-    require("./config/cloudinary");
+    await ensureReady();
 
     app.listen(PORT, () => {
       console.log("\n🚀 ================================");
@@ -107,4 +131,7 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// `node src/index.js` (lokal/Docker) -> listen. Di Vercel file ini hanya di-require (api/index.js).
+if (require.main === module) startServer();
+
+module.exports = app;

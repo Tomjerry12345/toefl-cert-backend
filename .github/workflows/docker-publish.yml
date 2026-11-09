@@ -1,0 +1,68 @@
+name: Docker CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # untuk push ke GitHub Container Registry (gratis)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Build lokal dulu (belum push) supaya bisa diuji
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ci-test:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Smoke test: app bisa di-load, dependensi lengkap, Chromium terpasang
+      - name: Smoke test image
+        run: |
+          docker run --rm ci-test:latest node -e "require('./src/index.js'); console.log('app OK')"
+          docker run --rm ci-test:latest node -e "require('puppeteer-core'); console.log('puppeteer-core OK')"
+          docker run --rm ci-test:latest chromium --version
+
+      # Push hanya untuk push ke main (bukan pull request)
+      - name: Login ke ghcr.io
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Metadata tag
+        if: github.event_name == 'push'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Push image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
