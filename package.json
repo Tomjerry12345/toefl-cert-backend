@@ -9,7 +9,8 @@
     "dev": "set NODE_OPTIONS=--openssl-legacy-provider && nodemon src/index.js",
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy.js --network sepolia",
-    "test": "npx hardhat test"
+    "test": "node --test",
+    "test:contract": "npx hardhat test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -31,12 +32,17 @@
     "keccak256": "^1.0.6",
     "express-validator": "^7.0.1",
     "express-rate-limit": "^7.1.5",
-    "puppeteer": "^21.0.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "puppeteer-core": "24.32.0",
+    "@sparticuz/chromium": "143.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
     "hardhat": "^2.19.3",
-    "@nomicfoundation/hardhat-toolbox": "^4.0.0"
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "puppeteer": "24.32.0"
+  },
+  "engines": {
+    "node": ">=20.11.0"
   }
 }

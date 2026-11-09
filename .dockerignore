@@ -1,0 +1,14 @@
+node_modules
+.git
+.github
+.env
+.env.*
+uploads
+artifacts
+cache
+typechain-types
+*.log
+api
+vercel.json
+Dockerfile
+docker-compose.yml

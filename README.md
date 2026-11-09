@@ -160,3 +160,19 @@ Content-Type: application/json
 - **Merkle Tree**: merkletreejs + keccak256
 - **QR Code**: qrcode
 - **File Upload**: multer
+
+## Docker
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Server jalan di http://localhost:5000. Image juga di-build dan dipublish ke ghcr.io lewat GitHub Actions setiap push ke `main`. Cara deploy ke Vercel dan detail lainnya ada di [DEPLOY.md](DEPLOY.md).
+
+## Test
+
+```bash
+npm test               # Merkle tree, util, validasi, auth, health check (tanpa database)
+npm run test:contract  # test smart contract (hardhat)
+```
